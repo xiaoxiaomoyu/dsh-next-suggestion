@@ -1,6 +1,6 @@
 {
   "name": "dsh-next-suggestion",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "每轮回复结束后预测你的下一句话，在输入框上方给几条候选，点一下填进输入框。",
