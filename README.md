@@ -160,6 +160,10 @@ dsh plugin --profile web add "link:D:/path/to/dsh-next-suggestion"
 
 包本身没有运行时依赖：React 来自浏览器模块表，Host 只用 Node 内置模块。
 
+## 变更记录
+
+见 [CHANGELOG.md](CHANGELOG.md)。
+
 ## 许可证
 
 MIT，见 [LICENSE](LICENSE)。

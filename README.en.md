@@ -162,6 +162,10 @@ dsh plugin --profile web add "link:D:/path/to/dsh-next-suggestion"
 
 `package.json` has no runtime dependencies: React comes from the browser module table, and the Host imports only Node built-ins.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
