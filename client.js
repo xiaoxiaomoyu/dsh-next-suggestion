@@ -465,6 +465,28 @@ window.__ModuleLoader__.load({
         return () => window.removeEventListener('dsh-next-suggestion:muted', onMuted)
       }, [cancel])
 
+      // Turning the feature off should take the card with it, cache included.
+      React.useEffect(() => {
+        if (prefs.enabled) return
+        cancel()
+        setItems([])
+        if (sessionId) CACHE.delete(sessionId)
+      }, [prefs.enabled, sessionId, cancel])
+
+      // A smaller candidate count takes effect on the card already on screen.
+      React.useEffect(() => {
+        setItems((previous) => (previous.length > prefs.count ? previous.slice(0, prefs.count) : previous))
+      }, [prefs.count])
+
+      // A different model or provider invalidates every cached batch.
+      const lastTarget = React.useRef(`${prefs.provider}/${prefs.model}`)
+      React.useEffect(() => {
+        const next = `${prefs.provider}/${prefs.model}`
+        if (next === lastTarget.current) return
+        lastTarget.current = next
+        CACHE.clear()
+      }, [prefs.provider, prefs.model])
+
       const fill = (text) => {
         if (!actions || latest.current.draft !== '') return
         try {
@@ -555,7 +577,7 @@ window.__ModuleLoader__.load({
 
       return h(
         'div',
-        { ref: rootRef, className: 'dsh-ns-card', role: 'group', 'aria-label': TEXT.label },
+        { ref: rootRef, className: 'dsh-ns-card', role: 'group', 'aria-label': TEXT.label, 'aria-live': 'polite' },
         h('style', null, CSS),
         h(
           'div',
