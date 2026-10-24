@@ -142,6 +142,24 @@ const results = []
   results.push(['last-user', res.status, res.body])
 }
 
+// 9. the Client may override the candidate count for one request
+{
+  routes.clear()
+  apply(fakeCtx(session, '["一","二"]'), { enabled: true, count: 2 })
+  const res = fakeRes()
+  await routes.get('/plugins/dsh-next-suggestion/predict')(fakeReq({ body: { sessionId: 's1', count: 1 } }), res)
+  results.push(['count-override', res.status, res.body])
+}
+
+// 10. onlyQuestion: the assistant turn ended with a statement, not a question
+{
+  routes.clear()
+  apply(fakeCtx(session, '["不该出现"]'), { enabled: true, count: 2 })
+  const res = fakeRes()
+  await routes.get('/plugins/dsh-next-suggestion/predict')(fakeReq({ body: { sessionId: 's1', onlyQuestion: true } }), res)
+  results.push(['only-question', res.status, res.body])
+}
+
 for (const row of results) console.log(row.join(' | '))
 
 const failures = []
@@ -168,6 +186,8 @@ expect(
   results[6][2],
 )
 expect('last-user', results[7][1] === 200 && JSON.parse(results[7][2]).items.length === 0, results[7][2])
+expect('count-override', results[8][1] === 200 && JSON.parse(results[8][2]).items.length === 1, results[8][2])
+expect('only-question', results[9][1] === 200 && JSON.parse(results[9][2]).items.length === 0, results[9][2])
 
 if (failures.length > 0) {
   console.error('FAIL', failures)

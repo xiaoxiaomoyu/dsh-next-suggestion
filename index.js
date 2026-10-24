@@ -151,7 +151,7 @@ function messageText(message) {
  * the model what the whole session is about.
  * @param {any} session
  * @param {{ maxMessages: number, messageChars: number }} cfg
- * @returns {{ seed: string, transcript: string, recentUser: string[], lastRole: string }}
+ * @returns {{ seed: string, transcript: string, recentUser: string[], lastRole: string, lastText: string }}
  */
 function buildContext(session, cfg) {
   /** @type {string[]} */
@@ -162,7 +162,7 @@ function buildContext(session, cfg) {
   try {
     messages = session.deriveMessages()
   } catch {
-    return { seed: '', transcript: '', recentUser: [], lastRole: '' }
+    return { seed: '', transcript: '', recentUser: [], lastRole: '', lastText: '' }
   }
 
   /** @type {string | undefined} */
@@ -177,13 +177,18 @@ function buildContext(session, cfg) {
 
   /** @type {string} */
   let lastRole = ''
+  /** @type {string} */
+  let lastText = ''
   let total = 0
   for (let i = messages.length - 1; i >= 0 && picked.length < cfg.maxMessages; i -= 1) {
     const message = messages[i]
     if (message.role !== 'user' && message.role !== 'assistant') continue
     const text = messageText(message)
     if (text === '') continue
-    if (lastRole === '') lastRole = message.role
+    if (lastRole === '') {
+      lastRole = message.role
+      lastText = text
+    }
     if (message.role === 'user' && recentUser.length < 4) recentUser.push(text)
     const clipped =
       message.role === 'assistant'
@@ -199,6 +204,7 @@ function buildContext(session, cfg) {
     transcript: picked.reverse().join('\n\n'),
     recentUser,
     lastRole,
+    lastText,
   }
 }
 
@@ -220,11 +226,15 @@ function systemPrompt(count) {
 
 /**
  * @param {{ seed: string, transcript: string }} context
+ * @param {readonly string[]} [avoid]
  */
-function userPrompt(context) {
+function userPrompt(context, avoid = []) {
   const parts = []
   if (context.seed !== '') parts.push(`任务：${context.seed}`)
   parts.push(`最近对话：\n${context.transcript}`)
+  if (avoid.length > 0) {
+    parts.push(`用户刚否定了这些候选，不要重复：\n${avoid.map((item) => `- ${item}`).join('\n')}`)
+  }
   parts.push('下一条用户消息候选：')
   return parts.join('\n\n')
 }
@@ -368,30 +378,44 @@ export function apply(ctx, rawConfig) {
     }
     const sessionId = body && typeof body.sessionId === 'string' ? body.sessionId : ''
     const fresh = Boolean(body && body.fresh === true)
+    const count = clampInt(body && body.count, 1, 3, cfg.count)
+    const provider = pickString(body && body.provider, cfg.provider)
+    const model = pickString(body && body.model, cfg.model)
+    const maxMessages = clampInt(body && body.maxMessages, 2, 20, cfg.maxMessages)
+    const messageChars = clampInt(body && body.messageChars, 100, 2000, cfg.messageChars)
+    const timeoutMs = clampInt(body && body.timeoutMs, 1000, 60000, cfg.timeoutMs)
+    const maxOutputTokens = clampInt(body && body.maxOutputTokens, 200, 16000, cfg.maxOutputTokens)
+    const onlyQuestion = Boolean(body && body.onlyQuestion === true)
+    const avoid = Array.isArray(body && body.avoid)
+      ? body.avoid.filter((item) => typeof item === 'string' && item.trim() !== '').slice(0, 5)
+      : []
     debugLog(cfg.debug, `POST predict sid=${sessionId.slice(0, 12)}${fresh ? ' fresh' : ''}`)
     const session = sessionId === '' ? undefined : ctx.sessions.get(/** @type {any} */ (sessionId))
     if (session === undefined) return sendJson(res, 200, { items: [] })
 
-    const context = buildContext(session, cfg)
+    const context = buildContext(session, { maxMessages, messageChars })
     // A prediction answers an assistant turn. If the newest message is the
     // user's own (aborted turn, or a brand-new session), there is nothing to
     // respond to yet.
     if (context.transcript === '' || context.lastRole !== 'assistant') {
       return sendJson(res, 200, { items: [] })
     }
+    if (onlyQuestion && !/[\?？]\s*$/.test(context.lastText)) {
+      return sendJson(res, 200, { items: [] })
+    }
 
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), cfg.timeoutMs)
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
     const onClose = () => controller.abort()
     req.on('close', onClose)
     try {
       const stream = ctx.llm.stream({
-        provider: cfg.provider,
-        model: cfg.model,
-        system: systemPrompt(cfg.count),
-        messages: [{ role: 'user', content: [{ type: 'text', text: userPrompt(context) }] }],
+        provider,
+        model,
+        system: systemPrompt(count),
+        messages: [{ role: 'user', content: [{ type: 'text', text: userPrompt(context, avoid) }] }],
         reasoningEffort: /** @type {any} */ ('high'),
-        maxTokens: cfg.maxOutputTokens,
+        maxTokens: maxOutputTokens,
         // A "try again" call should not repeat the same sentence.
         temperature: fresh ? 0.9 : 0.5,
         signal: controller.signal,
@@ -401,7 +425,7 @@ export function apply(ctx, rawConfig) {
       for await (const chunk of stream) {
         if (chunk && chunk.type === 'text-delta' && typeof chunk.text === 'string') output += chunk.text
       }
-      const items = parseItems(output, cfg.count, context.recentUser)
+      const items = parseItems(output, count, context.recentUser)
       debugLog(cfg.debug, `  -> ${items.length} items (${JSON.stringify(output).slice(0, 160)})`)
       return sendJson(res, 200, { items })
     } catch (error) {
