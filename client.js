@@ -623,7 +623,7 @@ window.__ModuleLoader__.load({
         if (!panel) return
         const selector = 'button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])'
         const focusables = () =>
-          Array.from(panel.querySelectorAll(selector)).filter((element) => !element.disabled)
+          Array.from(panel.querySelectorAll(selector)).filter((element) => !element.disabled && element.offsetParent !== null)
         panel.focus()
         const onKey = (event) => {
           if (event.key === 'Escape') {
