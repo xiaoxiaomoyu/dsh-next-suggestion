@@ -32,15 +32,7 @@ Predicts what you are about to say in DeepSeek Harness and offers a few candidat
 
 ## Install
 
-Requires a DSH Web profile (`dsh web`) and a configured model provider.
-
-From npm:
-
-```powershell
-dsh plugin --profile web add dsh-next-suggestion
-```
-
-Before it is published, install from a checkout:
+From a checkout:
 
 ```powershell
 git clone https://github.com/xiaoxiaomoyu/dsh-next-suggestion.git

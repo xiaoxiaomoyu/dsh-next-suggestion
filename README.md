@@ -32,19 +32,11 @@
 
 ## 安装
 
-需要 DSH Web profile（`dsh web`）和已配置的模型。
-
-从 npm 安装：
-
-```powershell
-dsh plugin --profile web add dsh-next-suggestion
-```
-
-还没发布到 npm 时，可以从源码装：
+从源码安装：
 
 ```powershell
 git clone https://github.com/xiaoxiaomoyu/dsh-next-suggestion.git
-dsh plugin --profile web add "link:D:/path/to/dsh-next-suggestion"
+dsh plugin --profile web add "link:/绝对路径/dsh-next-suggestion"
 ```
 
 装完重启一次 Host，再刷新页面。卸载：
