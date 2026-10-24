@@ -64,7 +64,7 @@ dsh plugin --profile web remove dsh-next-suggestion
 
 输入框工具栏右侧、发送按钮旁边有一个滑杆图标，点开就是全部设置。设置存在本机浏览器里，改完立即生效，不用重启；换设备不会同步。
 
-- 启用开关、候选条数（1–3）
+- 启用开关、候选条数（1–3）、显示方式（卡片 / 内联 ghost）
 - 接受方式：Tab、→、Esc 各自开关
 - 触发时机：每轮 / 仅当助手最后一句是问句
 - 默认收起、是否显示条数角标
@@ -73,7 +73,7 @@ dsh plugin --profile web remove dsh-next-suggestion
 - 高级：provider、model、上下文条数、每条字符数、超时、最大输出 token
 - 底部「恢复默认」：快捷键、行为、高级参数一起回到初始值
 
-显示方式目前只有卡片；内联 ghost（Codex 那种）会在后续版本加进来。
+**内联 ghost**：候选以灰色文字出现在输入框里，只显示第一条，末尾带 `Tab` 提示。点击、`Tab`、`→` 都能接受，`Esc` 关闭；ghost 出现时会暂时隐藏输入框的 placeholder，避免文字重叠。卡片模式的行为不变。
 
 ## 配置文件（可选）
 
@@ -126,6 +126,7 @@ dsh plugin --profile web remove dsh-next-suggestion
 - 只有 Web 端，没有 TUI / Desktop 版本。
 - Tab 接受是有范围的：只在卡片可见、输入框聚焦时由捕获阶段拦截。其他时候 Tab 仍是焦点切换，没有注册全局快捷键。
 - 预测的是整句。你已经打了一半的字不会被补全，输入框非空时也不出卡片。
+- 内联 ghost 只显示第一条，不支持下方向键在候选间切换；它出现时会暂时隐藏 placeholder，依赖 DSH 的 data-composer-placeholder 属性。
 - 每轮一次模型调用；打开没有缓存的空闲会话再补一次；每次点 `↻` 再加一次。
 - 界面文案按 `navigator.language` 在中英文之间切，没有接完整的 DSH locale 服务。
 

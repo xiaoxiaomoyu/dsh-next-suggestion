@@ -66,7 +66,7 @@ The card only appears when the composer is empty, there are no attachments or qu
 
 A sliders icon sits in the composer toolbar next to the send action; it opens every setting. Preferences are stored in this browser, take effect immediately, and do not sync across devices.
 
-- Master switch and candidate count (1–3)
+- Master switch, candidate count (1–3), and display mode (card / inline ghost)
 - Accept keys: Tab, →, and Esc, each independently toggleable
 - Trigger: every turn, or only when the assistant's last message ends with a question
 - Default collapsed state and the count badge
@@ -75,7 +75,7 @@ A sliders icon sits in the composer toolbar next to the send action; it opens ev
 - Advanced: provider, model, context messages, characters per message, timeout, max output tokens
 - **Restore defaults** resets keys, behavior, and advanced values in one click
 
-Only the card layout exists today; an inline ghost mode (Codex style) is planned.
+**Inline ghost**: the top candidate appears as grey text inside the composer, with a small `Tab` hint. Click it, press `Tab` or `→` to accept, `Esc` to dismiss. While the ghost is visible the composer placeholder is hidden, so the two do not overlap. Card mode is unchanged.
 
 ## Configuration
 
@@ -128,6 +128,7 @@ Requests are bounded by `timeoutMs` and aborted when the browser disconnects.
 - Web only; there is no TUI or Desktop surface.
 - Tab acceptance is scoped: a capture-phase handler intercepts Tab only while the card is visible and the composer has focus. Everywhere else Tab remains focus traversal. It is not registered as a global shortcut.
 - Predictions are whole messages. The card does not complete text you are already typing, and it does not appear while the composer is non-empty.
+- Inline ghost shows only the first candidate; there is no arrow-key cycling. It temporarily hides the composer placeholder and relies on DSH's data-composer-placeholder attribute.
 - One model call per turn, plus one when opening an idle session with no cached card, plus one per `↻` click.
 - UI copy is Chinese or English based on `navigator.language`, not the full DSH locale service.
 
