@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Next Message Suggestions",
+    "description": "After each turn, predicts what you may say next and offers a few one-click candidates above the composer."
+  }
+}

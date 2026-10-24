@@ -1,0 +1,57 @@
+{
+  "name": "dsh-next-suggestion",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Predicts your next message after each turn and fills it into the composer with one click.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "chat",
+    "completion",
+    "prediction"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xiaoxiaomoyu/dsh-next-suggestion.git"
+  },
+  "homepage": "https://github.com/xiaoxiaomoyu/dsh-next-suggestion#readme",
+  "bugs": {
+    "url": "https://github.com/xiaoxiaomoyu/dsh-next-suggestion/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node test/host.test.mjs"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  }
+}
