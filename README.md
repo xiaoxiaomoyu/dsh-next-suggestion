@@ -79,6 +79,7 @@ dsh plugin --profile web remove dsh-next-suggestion
 - 降频：连续忽略几次后，改成每几轮出现一次
 - 本会话不再提示
 - 高级：provider、model、上下文条数、每条字符数、超时、最大输出 token
+- 底部「恢复默认」：快捷键、行为、高级参数一起回到初始值
 
 显示方式目前只有卡片；内联 ghost（Codex 那种）会在后续版本加进来。
 

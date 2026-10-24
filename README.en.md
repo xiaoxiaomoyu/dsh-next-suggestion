@@ -81,6 +81,7 @@ A sliders icon sits in the composer toolbar next to the send action; it opens ev
 - Backoff: after N ignored suggestions, try once every M turns
 - Mute this session
 - Advanced: provider, model, context messages, characters per message, timeout, max output tokens
+- **Restore defaults** resets keys, behavior, and advanced values in one click
 
 Only the card layout exists today; an inline ghost mode (Codex style) is planned.
 

@@ -50,6 +50,8 @@ window.__ModuleLoader__.load({
 .dsh-ns-seg button{appearance:none;border:1px solid var(--dsw-alias-border-l2,rgba(255,255,255,.12));background:transparent;color:inherit;border-radius:6px;padding:2px 12px;font:inherit;cursor:pointer}
 .dsh-ns-seg button[data-on=true]{background:var(--dsw-alias-state-business-primary,#4d6bfe);border-color:transparent;color:#fff}
 .dsh-ns-hint{color:var(--dsw-alias-label-caption,#888);font-size:11px;padding:2px 0 6px}
+.dsh-ns-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+.dsh-ns-footer .dsh-ns-hint{padding:0;margin:0}
 .dsh-ns-adv{margin-top:14px;padding-top:12px;border-top:1px solid var(--dsw-alias-border-l2,rgba(255,255,255,.08))}
 .dsh-ns-adv summary{cursor:pointer;color:var(--dsw-alias-label-secondary,#bbb);font-size:12px;font-weight:500}
 @keyframes dsh-ns-fade{from{opacity:0}to{opacity:1}}
@@ -101,6 +103,11 @@ window.__ModuleLoader__.load({
     }
     const updatePrefs = (patch) => {
       Object.assign(PREFS, patch)
+      persistPrefs()
+      for (const listener of prefsListeners) listener()
+    }
+    const resetPrefs = () => {
+      Object.assign(PREFS, DEFAULT_PREFS)
       persistPrefs()
       for (const listener of prefsListeners) listener()
     }
@@ -767,7 +774,16 @@ window.__ModuleLoader__.load({
                 muted ? '恢复提示' : '不再提示',
               ),
             ),
-            h('div', { className: 'dsh-ns-hint', style: { marginTop: '10px' } }, '设置只保存在本机浏览器，换设备不同步。'),
+            h(
+              'div',
+              { className: 'dsh-ns-footer' },
+              h('span', { className: 'dsh-ns-hint' }, '设置只保存在本机浏览器，换设备不同步。'),
+              h(
+                'button',
+                { type: 'button', className: 'dsh-ns-btn', onClick: () => resetPrefs() },
+                '恢复默认',
+              ),
+            ),
             h(
               'details',
               { className: 'dsh-ns-adv' },
