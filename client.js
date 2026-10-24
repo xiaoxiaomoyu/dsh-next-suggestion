@@ -641,7 +641,10 @@ window.__ModuleLoader__.load({
           next.focus()
         }
         document.addEventListener('keydown', onKey, true)
-        return () => document.removeEventListener('keydown', onKey, true)
+        return () => {
+          document.removeEventListener('keydown', onKey, true)
+          if (btnRef.current) btnRef.current.focus()
+        }
       }, [open])
 
       const muted = sessionId !== '' && MUTED.has(sessionId)
