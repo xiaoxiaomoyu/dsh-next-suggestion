@@ -28,6 +28,9 @@ window.__ModuleLoader__.load({
           enable: '启用建议',
           enableHint: '显示',
           count: '候选条数',
+          display: '显示方式',
+          card: '卡片',
+          ghost: '内联',
           keys: '接受方式',
           tabHint: '接受第一条',
           arrowHint: '空输入框时接受',
@@ -63,6 +66,9 @@ window.__ModuleLoader__.load({
           enable: 'Enabled',
           enableHint: 'Show suggestions',
           count: 'Candidates',
+          display: 'Display',
+          card: 'Card',
+          ghost: 'Inline',
           keys: 'Accept keys',
           tabHint: 'Accept the top one',
           arrowHint: 'When the composer is empty',
@@ -131,6 +137,12 @@ window.__ModuleLoader__.load({
 @media (prefers-reduced-motion: reduce){.dsh-ns-backdrop,.dsh-ns-panel{animation:none}}
 .dsh-ns-btn{appearance:none;border:1px solid var(--dsw-alias-border-l2,rgba(255,255,255,.14));background:transparent;color:inherit;border-radius:7px;padding:3px 10px;font:inherit;cursor:pointer}
 .dsh-ns-btn:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.08))}
+.dsh-ns-ghost-layer{position:absolute;inset:0;pointer-events:none;z-index:20}
+.dsh-ns-ghost{position:absolute;display:flex;align-items:flex-start;gap:8px;max-width:100%;margin:0;padding:0;border:0;background:transparent;color:var(--dsw-alias-label-dimmed,#6b7280);font:inherit;font-size:14px;line-height:22px;text-align:left;cursor:pointer;pointer-events:auto}
+.dsh-ns-ghost:hover{color:var(--dsw-alias-label-secondary,#aaa)}
+.dsh-ns-ghost-text{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.dsh-ns-ghost-key{flex:none;margin-top:3px;padding:0 5px;border:1px solid currentColor;border-radius:4px;font-size:10px;line-height:14px;opacity:.7}
+body:has([data-dsh-ns-ghost]) [data-composer-placeholder]{visibility:hidden}
 `
 
     // Device-local preferences. Everything the settings panel edits lives here;
@@ -148,6 +160,7 @@ window.__ModuleLoader__.load({
       onlyQuestion: false,
       defaultCollapsed: false,
       showCount: true,
+      displayMode: 'card',
       onlyThisSession: false,
       provider: 'deepseek-official',
       model: 'deepseek-flash',
@@ -191,6 +204,31 @@ window.__ModuleLoader__.load({
         return () => prefsListeners.delete(listener)
       }, [])
       return PREFS
+    }
+
+    // Shared between the card (which owns requests and cache) and the ghost
+    // renderer (which only draws the top candidate inside the composer).
+    const suggestionStore = {
+      items: [],
+      sessionId: '',
+      accept: null,
+      listeners: new Set(),
+      set(patch) {
+        Object.assign(this, patch)
+        for (const listener of this.listeners) listener()
+      },
+      subscribe(listener) {
+        this.listeners.add(listener)
+        return () => this.listeners.delete(listener)
+      },
+    }
+    const useSuggestion = () => {
+      const [, force] = React.useState(0)
+      React.useEffect(() => {
+        const listener = () => force((value) => value + 1)
+        return suggestionStore.subscribe(listener)
+      }, [])
+      return suggestionStore
     }
 
     // Per-Session cache: remounting the composer (session switch) restores the
@@ -597,6 +635,18 @@ window.__ModuleLoader__.load({
         void predict(true)
       }
 
+      // Publish the card's data to the ghost renderer without re-implementing
+      // the request lifecycle there.
+      const actionsRef = React.useRef({ fill })
+      actionsRef.current = { fill }
+      React.useEffect(() => {
+        suggestionStore.set({
+          items,
+          sessionId,
+          accept: (text) => actionsRef.current.fill(text),
+        })
+      }, [items, sessionId])
+
       // Claude-style acceptance: Tab or Right on an empty composer, Escape to
       // dismiss. Only while the card is visible and the editor owns focus, so
       // Tab still works as focus traversal everywhere else.
@@ -629,7 +679,7 @@ window.__ModuleLoader__.load({
         return () => document.removeEventListener('keydown', onKeyDown, true)
       }, [items, sessionId])
 
-      if (!prefs.enabled || !cfg.enabled || items.length === 0) return null
+      if (prefs.displayMode !== 'card' || !prefs.enabled || !cfg.enabled || items.length === 0) return null
 
       const visible = collapsed ? items.slice(0, 1) : items
       const rows = visible.map((text, index) =>
@@ -841,7 +891,14 @@ window.__ModuleLoader__.load({
                   { value: 2, label: '2' },
                   { value: 3, label: '3' },
                 ]),
-            ),
+              ),
+              row(
+                S.display,
+                seg('displayMode', [
+                  { value: 'card', label: S.card },
+                  { value: 'ghost', label: S.ghost },
+                ]),
+              ),
             h('div', { className: 'dsh-ns-sect' }, S.keys),
             row('Tab', check('tab', S.tabHint)),
             row('→', check('arrow', S.arrowHint)),
@@ -928,6 +985,127 @@ window.__ModuleLoader__.load({
       )
     }
 
+    /** Ghost renderer: draws the top candidate where the placeholder sits. */
+    function SuggestionGhost(props) {
+      const store = useSuggestion()
+      const prefs = usePrefs()
+      const session = props.session
+      const input = props.input
+      const draft = input && typeof input.draft === 'string' ? input.draft : ''
+      const running = Boolean(session && session.running)
+      const text = store.items && store.items.length > 0 ? store.items[0] : ''
+      const phase = input && typeof input.phase === 'string' ? input.phase : 'plain'
+      const attachments = input && Array.isArray(input.attachmentIds) ? input.attachmentIds.length : 0
+      const queued = input && Array.isArray(input.queue) ? input.queue.length : 0
+      const visible =
+        prefs.enabled &&
+        prefs.displayMode === 'ghost' &&
+        text !== '' &&
+        draft === '' &&
+        !running &&
+        phase === 'plain' &&
+        attachments === 0 &&
+        queued === 0
+      const layerRef = React.useRef(null)
+      const [box, setBox] = React.useState(null)
+
+      React.useLayoutEffect(() => {
+        if (!visible) return undefined
+        const layer = layerRef.current
+        if (!layer) return undefined
+        const measure = () => {
+          // Anchor to this composer's placeholder, not another composer's.
+          let node = layer.parentElement
+          /** @type {Element | null} */
+          let placeholder = null
+          while (node) {
+            placeholder = node.querySelector('[data-composer-placeholder]')
+            if (placeholder) break
+            node = node.parentElement
+          }
+          if (!placeholder) {
+            setBox(null)
+            return
+          }
+          const layerRect = layer.getBoundingClientRect()
+          const rect = placeholder.getBoundingClientRect()
+          if (rect.width === 0 || rect.height === 0) {
+            setBox(null)
+            return
+          }
+          let width = rect.width
+          if (width < 200 && placeholder.parentElement) {
+            width = placeholder.parentElement.getBoundingClientRect().width
+          }
+          setBox({
+            left: rect.left - layerRect.left,
+            top: rect.top - layerRect.top,
+            width,
+            height: rect.height,
+          })
+        }
+        measure()
+        window.addEventListener('resize', measure)
+        let observer = null
+        if (typeof ResizeObserver !== 'undefined' && layer.parentElement) {
+          observer = new ResizeObserver(measure)
+          observer.observe(layer.parentElement)
+        }
+        return () => {
+          window.removeEventListener('resize', measure)
+          if (observer) observer.disconnect()
+        }
+      }, [visible, text])
+
+      if (!visible) return null
+      return h(
+        React.Fragment,
+        null,
+        h('style', null, CSS),
+        h(
+          'div',
+          { ref: layerRef, className: 'dsh-ns-ghost-layer' },
+          box
+            ? h(
+                'button',
+                {
+                  type: 'button',
+                  className: 'dsh-ns-ghost',
+                  'data-dsh-ns-ghost': true,
+                  'aria-label': text,
+                  title: text,
+                  style: {
+                    left: `${box.left}px`,
+                    top: `${box.top}px`,
+                    width: `${box.width}px`,
+                    minHeight: `${box.height}px`,
+                  },
+                  onMouseDown: (event) => event.preventDefault(),
+                  onClick: () => {
+                    // The ghost may be clicked before the editor is focused.
+                    let node = layerRef.current ? layerRef.current.parentElement : null
+                    let placeholder = null
+                    while (node) {
+                      placeholder = node.querySelector('[data-composer-placeholder]')
+                      if (placeholder) break
+                      node = node.parentElement
+                    }
+                    const editor =
+                      placeholder && placeholder.parentElement
+                        ? placeholder.parentElement.querySelector('[contenteditable="true"]')
+                        : null
+                    if (editor && typeof editor.focus === 'function') editor.focus()
+                    if (store.accept) store.accept(text)
+                  },
+                },
+                h('span', { className: 'dsh-ns-ghost-text' }, text),
+                h('span', { className: 'dsh-ns-ghost-key' }, 'Tab'),
+              )
+            : null,
+        ),
+      )
+    }
+
     return {
       inject: ['slots'],
       apply(ctx) {
@@ -949,6 +1127,16 @@ window.__ModuleLoader__.load({
               order: 5,
             },
             SettingsEntry,
+          ),
+        )
+        ctx.slots.inject('conversation.input.overlay', () =>
+          ctx.slots.register(
+            {
+              name: 'conversation.input.overlay',
+              id: 'next-suggestion-ghost',
+              order: 10,
+            },
+            SuggestionGhost,
           ),
         )
       },
