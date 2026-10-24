@@ -1,6 +1,7 @@
 {
   "name": "dsh-next-suggestion",
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "description": "每轮回复结束后预测你的下一句话，在输入框上方给几条候选，点一下填进输入框。",
   "keywords": [
@@ -20,11 +21,7 @@
   "bugs": {
     "url": "https://github.com/xiaoxiaomoyu/dsh-next-suggestion/issues"
   },
-  "publishConfig": {
-    "access": "public"
-  },
-  "scripts": {
-    "test": "node test/host.test.mjs"
+  "scripts": {    "test": "node test/host.test.mjs"
   },
   "exports": {
     ".": "./index.js",
