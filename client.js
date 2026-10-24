@@ -118,6 +118,7 @@ window.__ModuleLoader__.load({
 .dsh-ns-panel:focus{outline:none}
 .dsh-ns-panel{box-sizing:border-box;width:min(460px,100%);animation:dsh-ns-pop 180ms ease-out;max-height:min(720px,86vh);overflow:auto;padding:18px 20px 16px;border-radius:16px;background:var(--dsw-specific-input-major,#1e1e1e);border:1px solid var(--dsw-alias-border-l2,rgba(255,255,255,.1));box-shadow:0 24px 60px rgba(0,0,0,.5);color:var(--dsw-alias-label-primary,#eee);font-size:13px;line-height:20px}
 .dsh-ns-panelhead{display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:15px;margin-bottom:6px}
+.dsh-ns-ver{font-weight:400;font-size:11px;color:var(--dsw-alias-label-caption,#888);margin-left:8px}
 .dsh-ns-sect{margin:16px 0 6px;padding-top:12px;border-top:1px solid var(--dsw-alias-border-l2,rgba(255,255,255,.08));color:var(--dsw-alias-label-caption,#888);font-size:11px;letter-spacing:.06em}
 .dsh-ns-row{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:32px;padding:2px 0}
 .dsh-ns-row>span{flex:1;color:var(--dsw-alias-label-secondary,#bbb)}
@@ -765,8 +766,22 @@ body:has([data-dsh-ns-ghost]) [data-composer-placeholder]{visibility:hidden}
       const session = props.session
       const sessionId = session && session.sessionId ? String(session.sessionId) : ''
       const [open, setOpen] = React.useState(false)
+      const [version, setVersion] = React.useState('')
       const btnRef = React.useRef(null)
       const panelRef = React.useRef(null)
+
+      React.useEffect(() => {
+        let alive = true
+        fetch(`${BASE}/config`, { credentials: 'same-origin' })
+          .then((response) => (response.ok ? response.json() : null))
+          .then((data) => {
+            if (alive && data && typeof data.version === 'string') setVersion(data.version)
+          })
+          .catch(() => {})
+        return () => {
+          alive = false
+        }
+      }, [])
 
       React.useEffect(() => {
         if (!open) return
@@ -876,7 +891,12 @@ body:has([data-dsh-ns-ghost]) [data-composer-placeholder]{visibility:hidden}
               h(
                 'div',
                 { className: 'dsh-ns-panelhead' },
-                h('span', { id: 'dsh-ns-title' }, S.title),
+                h(
+                  'span',
+                  { id: 'dsh-ns-title' },
+                  S.title,
+                  version ? h('span', { className: 'dsh-ns-ver' }, ` v${version}`) : null,
+                ),
                 h(
                   'button',
                   { type: 'button', className: 'dsh-ns-icon', 'aria-label': S.close, onClick: () => setOpen(false) },

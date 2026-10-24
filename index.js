@@ -16,6 +16,14 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
+const VERSION = (() => {
+  try {
+    return JSON.parse(fs.readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
+  } catch {
+    return ''
+  }
+})()
+
 export const name = 'dsh-next-suggestion'
 
 /** Services this plugin needs before apply runs. */
@@ -339,7 +347,7 @@ export function apply(ctx, rawConfig) {
     if (req.method !== 'GET' && req.method !== 'HEAD') return sendJson(res, 405, { error: 'method' })
     if (!isAllowedOrigin(req)) return sendJson(res, 403, { error: 'origin' })
     debugLog(cfg.debug, `GET config from ${req.headers.origin ?? 'no-origin'}`)
-    return sendJson(res, 200, { enabled: cfg.enabled, count: cfg.count, debug: cfg.debug })
+    return sendJson(res, 200, { enabled: cfg.enabled, count: cfg.count, debug: cfg.debug, version: VERSION })
   }
 
   /**
